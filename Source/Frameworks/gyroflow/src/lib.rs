@@ -798,12 +798,20 @@ pub extern "C" fn importMediaFile(
     //---------------------------------------------------------
     // Load video file:
     //---------------------------------------------------------
-    match stab.load_video_file(&media_file_path_string, None, true) {
-        Ok(_) => {
-            log::info!("[Gyroflow Toolbox Rust] Video file loaded successfully");
+    match gyroflow_core::filesystem::open_file(&media_file_path_string, false, false) {
+        Ok(mut file) => {
+            let filesize = file.size;
+            match stab.load_video_file(file.get_file(), filesize, &media_file_path_string, None, true) {
+                Ok(_) => {
+                    log::info!("[Gyroflow Toolbox Rust] Video file loaded successfully");
+                },
+                Err(e) => {
+                    log::error!("[Gyroflow Toolbox Rust] An error occured: {:?}", e);
+                }
+            }
         },
         Err(e) => {
-            log::error!("[Gyroflow Toolbox Rust] An error occured: {:?}", e);
+            log::error!("[Gyroflow Toolbox Rust] Failed to open video file: {:?}", e);
         }
     }
 
@@ -1093,7 +1101,7 @@ pub extern "C" fn processFrame(
        // Set the Horizon Lock:
        //---------------------------------------------------------
        if smoothing.horizon_lock.lock_enabled != (horizon_lock > 0.0) || smoothing.horizon_lock.horizonlockpercent != horizon_lock || smoothing.horizon_lock.horizonroll != horizon_roll {
-          smoothing.horizon_lock.set_horizon(horizon_lock, horizon_roll, false, 0.0);
+          smoothing.horizon_lock.set_horizon(horizon_lock, horizon_roll, false, 0.0, false, 5.0, 500.0, 1.0, f64::INFINITY);
           params_changed = true;
        }
    }
@@ -1140,14 +1148,14 @@ pub extern "C" fn processFrame(
        input: BufferDescription {
            size: (output_width, output_height, input_stride),
            rect: None,
-           data: BufferSource::Metal { texture: in_mtl_tex as *mut metal::MTLTexture, command_queue: command_queue as *mut metal::MTLCommandQueue },
+           data: BufferSource::Metal { texture: in_mtl_tex, command_queue },
            rotation: Some(input_rotation as f32),
            texture_copy: false,
        },
        output: BufferDescription {
            size: (output_width, output_height, output_stride),
            rect: None,
-           data: BufferSource::Metal { texture: out_mtl_tex as *mut metal::MTLTexture, command_queue: command_queue as *mut metal::MTLCommandQueue },
+           data: BufferSource::Metal { texture: out_mtl_tex, command_queue },
            rotation: None,
            texture_copy: false,
        }
