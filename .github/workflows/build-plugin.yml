@@ -1,7 +1,7 @@
 name: Build Gyroflow Toolbox Plugin
 
 on:
-  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,33 +16,25 @@ jobs:
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
-      - name: Build Application
+      - name: Build Swift Package
         run: |
-          # Автоматически находим папку, где лежит xcodeproj, и переходим в неё
-          PROJECT_PATH=$(find . -name "GyroflowToolbox.xcodeproj" -maxdepth 3 -print -quit)
-          PROJECT_DIR=$(dirname "$PROJECT_PATH")
-          echo "Found project in directory: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
-          
-          xcodebuild -project GyroflowToolbox.xcodeproj \
-                     -scheme "Gyroflow Toolbox" \
-                     -configuration Release \
-                     -derivedDataPath build_output \
-                     CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGNING_REQUIRED=NO \
-                     COMPILER_INDEX_STORE_ENABLE=NO
+          swift build -c release --arch arm64 --arch x86_64
 
-      - name: Archive App
+      - name: Archive Built Plugin
         run: |
-          # Ищем скомпилированное приложение и архивируем его
           mkdir -p dist
-          APP_PATH=$(find . -name "Gyroflow Toolbox.app" -type d -print -quit)
-          echo "Found built app at: $APP_PATH"
-          cp -R "$APP_PATH" dist/
-          cd dist && zip -r ../gyroflow-toolbox.zip "Gyroflow Toolbox.app"
+          # Ищем скомпилированные бинарные файлы или бандл плагина
+          find .build/apple/Products/Release -name "*.app" -o -name "*.fsplugin" -o -name "*.bundle" -exec cp -R {} dist/ \; 2>/dev/null || true
+          
+          # Если плагин собирается как исполняемый файл, копируем всю папку сборки
+          if [ -z "$(ls -A dist)" ]; then
+            cp -R .build/release dist/
+          fi
+          
+          cd dist && zip -r ../gyroflow-toolbox-plugin.zip .
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Gyroflow-Toolbox-Plugin
-          path: gyroflow-toolbox.zip
+          path: gyroflow-toolbox-plugin.zip
