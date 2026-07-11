@@ -22,14 +22,14 @@ jobs:
           PROJ=$(find . -name "*.xcodeproj" -maxdepth 3 -print -quit)
           xcodebuild -resolvePackageDependencies -project "$PROJ" || true
 
-      - name: Build Xcode Project
+      - name: Build Xcode Project By Target
         run: |
           PROJ=$(find . -name "*.xcodeproj" -maxdepth 3 -print -quit)
           echo "Found project file: $PROJ"
           
-          # Явно передаем схему в кавычках и отключаем подпись
+          # Компилируем напрямую через цель (-target), минуя скрытые схемы
           xcodebuild -project "$PROJ" \
-                     -scheme "Gyroflow Toolbox" \
+                     -target "Gyroflow Toolbox" \
                      -configuration Release \
                      -derivedDataPath build_output \
                      CODE_SIGNING_ALLOWED=NO \
