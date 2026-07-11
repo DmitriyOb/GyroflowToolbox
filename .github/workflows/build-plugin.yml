@@ -1,0 +1,39 @@
+name: Build Gyroflow Toolbox Plugin
+
+on:
+  workflow_dispatch: # Позволяет запускать сборку вручную кнопкой
+
+jobs:
+  build:
+    runs-on: macos-14 # Используем сервер на macOS Sonoma/Sequoia с установленным Xcode
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Скачиваем код вместе со всеми зависимостями
+
+      - name: Set up Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app # Выбираем стабильную версию Xcode
+
+      - name: Build Application
+        run: |
+          xcodebuild -project GyroflowToolbox.xcodeproj \
+                     -scheme "Gyroflow Toolbox" \
+                     -configuration Release \
+                     -derivedDataPath build_output \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     COMPILER_INDEX_STORE_ENABLE=NO
+
+      - name: Archive App
+        run: |
+          mkdir -p dist
+          cp -R build_output/Build/Products/Release/Gyroflow\ Toolbox.app dist/
+          cd dist && zip -r ../gyroflow-toolbox.zip "Gyroflow Toolbox.app"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gyroflow-Toolbox-Plugin
+          path: gyroflow-toolbox.zip
