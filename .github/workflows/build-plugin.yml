@@ -5,19 +5,25 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14 # Используем сервер на macOS Sonoma/Sequoia с установленным Xcode
+    runs-on: macos-14
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Скачиваем код вместе со всеми зависимостями
+          submodules: recursive
 
       - name: Set up Xcode
-        run: sudo xcode-select -s /Applications/Xcode_15.4.app # Выбираем стабильную версию Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app
 
       - name: Build Application
         run: |
+          # Автоматически находим папку, где лежит xcodeproj, и переходим в неё
+          PROJECT_PATH=$(find . -name "GyroflowToolbox.xcodeproj" -maxdepth 3 -print -quit)
+          PROJECT_DIR=$(dirname "$PROJECT_PATH")
+          echo "Found project in directory: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          
           xcodebuild -project GyroflowToolbox.xcodeproj \
                      -scheme "Gyroflow Toolbox" \
                      -configuration Release \
@@ -28,8 +34,11 @@ jobs:
 
       - name: Archive App
         run: |
+          # Ищем скомпилированное приложение и архивируем его
           mkdir -p dist
-          cp -R build_output/Build/Products/Release/Gyroflow\ Toolbox.app dist/
+          APP_PATH=$(find . -name "Gyroflow Toolbox.app" -type d -print -quit)
+          echo "Found built app at: $APP_PATH"
+          cp -R "$APP_PATH" dist/
           cd dist && zip -r ../gyroflow-toolbox.zip "Gyroflow Toolbox.app"
 
       - name: Upload Artifact
